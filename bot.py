@@ -3,27 +3,21 @@ from discord import app_commands
 from discord.ext import commands
 import os, json, asyncio, zipfile
 
-# --- HỆ THỐNG QUẢN LÝ TOKEN & ĐỊNH DANH ---
+# --- HỆ THỐNG TOKEN & ĐỊNH DANH ---
 TOKEN_PATH = "/sdcard/Download/bot_token.txt"
 
 def get_token():
     if os.path.exists(TOKEN_PATH):
-        with open(TOKEN_PATH, "r") as f:
-            return f.read().strip()
-    else:
-        print("🔑 Lần đầu thiết lập, hãy nhập Token Bot.")
-        token = input("Nhập Token: ").strip()
-        with open(TOKEN_PATH, "w") as f:
-            f.write(token)
-        return token
+        with open(TOKEN_PATH, "r") as f: return f.read().strip()
+    tk = input("🔑 Nhập Token Bot: ").strip()
+    with open(TOKEN_PATH, "w") as f: f.write(tk)
+    return tk
 
 TOKEN = get_token()
-
-print("=== HỆ THỐNG DÀN MÁY MEW-BOT ===")
-MY_NAME = input("Nhập định danh máy (ví dụ mew-1): ").strip()
+MY_NAME = input("Nhập tên máy (ví dụ mew-1): ").strip()
 PREFIX = MY_NAME.split('-')[0]
 
-# --- CẤU HÌNH ĐƯỜNG DẪN ---
+# --- ĐƯỜNG DẪN FILE ---
 COOKIE_FILE = "/sdcard/Download/cookie.txt"
 SWITCHED_DIR = "/sdcard/Download/Shouko/switched/"
 JSON_CONFIG = "/sdcard/Download/config-change.json"
@@ -32,7 +26,12 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Hàm tìm folder Autoexec/Autoexecute toàn máy
+def count_accs():
+    if os.path.exists(COOKIE_FILE):
+        with open(COOKIE_FILE, "r") as f:
+            return len([l for l in f if l.strip()])
+    return 0
+
 def find_auto_folders():
     paths = []
     for root, dirs, _ in os.walk("/sdcard/"):
@@ -46,14 +45,23 @@ async def on_ready():
     await bot.tree.sync()
     print(f"✅ {MY_NAME} ĐÃ ONLINE!")
 
-# --- [1] PUT COOKIE ALL: CHIA ĐỀU ACC ---
+# --- [1] TOTAL & TOTAL ALL ---
+@bot.tree.command(name="total", description="Check lẻ 1 máy")
+async def total(interaction: discord.Interaction, id_may: str):
+    if id_may != MY_NAME: return
+    await interaction.response.send_message(f"📊 **{MY_NAME}**: `{count_accs()}` acc.")
+
+@bot.tree.command(name="total_all", description="Check toàn bộ dàn máy")
+async def total_all(interaction: discord.Interaction, prefix: str):
+    if prefix != PREFIX: return
+    await interaction.channel.send(f"🖥️ **{MY_NAME}**: `{count_accs()}` acc.")
+
+# --- [2] PUT COOKIE ALL (Chia đều, dư dồn máy cuối) ---
 @bot.tree.command(name="put_cookie_all", description="Chia đều cookie cho dàn máy")
 async def put_cookie_all(interaction: discord.Interaction, prefix: str, tong_so_may: int, file: discord.Attachment):
     if prefix != PREFIX: return
     await interaction.response.defer(ephemeral=True)
     
-    if "-1" in MY_NAME: await interaction.followup.send(f"⏳ Đang chia acc cho {tong_so_may} máy...")
-
     content = (await file.read()).decode("utf-8").splitlines()
     cookies = [c.strip() for c in content if c.strip()]
     
@@ -65,49 +73,43 @@ async def put_cookie_all(interaction: discord.Interaction, prefix: str, tong_so_
         
         with open(COOKIE_FILE, "w", encoding="utf-8") as f:
             f.write("\n".join(cookies[start:end]) + "\n")
-        print(f"✅ Đã nhận {len(cookies[start:end])} acc.")
+        print(f"✅ Nhận {len(cookies[start:end])} acc.")
     except: pass
 
-# --- [2] PUT SCRIPT ALL: DÒ VÀ DÁN TẤT CẢ ---
-@bot.tree.command(name="put_script_all", description="Dò tìm và dán script vào toàn bộ folder Autoexec")
-async def put_script_all(interaction: discord.Interaction, prefix: str, file: discord.Attachment):
-    if prefix != PREFIX: return
-    await interaction.response.defer(ephemeral=True)
-    
-    folders = find_auto_folders()
-    for folder in folders:
-        await file.save(os.path.join(folder, file.filename))
-    
-    print(f"✅ Đã nạp script vào {len(folders)} folder.")
-    if "-1" in MY_NAME: await interaction.followup.send(f"✅ Đã nạp xong script cho hệ thống {PREFIX}")
-
-# --- [3] GET ALL: NHẢ ACC VÀ XÓA TRẮNG ---
-@bot.tree.command(name="get_all", description="Lấy acc từ tất cả các máy")
+# --- [3] GET ALL (Lấy acc & Xóa file) ---
+@bot.tree.command(name="get_all", description="Thu hoạch acc từ tất cả máy")
 async def get_all(interaction: discord.Interaction, prefix: str):
     if prefix != PREFIX: return
-    
     if not os.path.exists(SWITCHED_DIR): return
     files = os.listdir(SWITCHED_DIR)
     if not files: return
 
     f_path = os.path.join(SWITCHED_DIR, files[0])
     await interaction.channel.send(content=f"📦 Acc từ **{MY_NAME}**", file=discord.File(f_path, filename=f"{MY_NAME}.txt"))
-    
     with open(f_path, "w") as f: f.truncate(0)
 
-# --- [4] LIST & DELETE SCRIPT ---
-@bot.tree.command(name="listscript", description="Xem danh sách script")
-async def listscript(interaction: discord.Interaction, id_may: str):
-    if id_may != MY_NAME: return
+# --- [4] PUT SCRIPT ALL (Nạp script toàn dàn) ---
+@bot.tree.command(name="put_script_all", description="Gửi script vào Autoexec toàn máy")
+async def put_script_all(interaction: discord.Interaction, prefix: str, file: discord.Attachment):
+    if prefix != PREFIX: return
     folders = find_auto_folders()
-    msg = f"📂 **Script tại {MY_NAME}:**\n"
     for fld in folders:
-        files = os.listdir(fld)
-        msg += f"\n`{fld}`:\n" + "\n".join([f"- {f}" for f in files])
-    await interaction.response.send_message(msg[:2000])
+        await file.save(os.path.join(fld, file.filename))
+    print(f"✅ Đã dán script vào {len(folders)} folder.")
 
-@bot.tree.command(name="scriptdelete", description="Xóa script cụ thể")
-async def scriptdelete(interaction: discord.Interaction, id_may: str, ten_file: str):
+# --- [5] CONFIG CHANGE ALL ---
+@bot.tree.command(name="config_all", description="Chỉnh sửa JSON toàn dàn")
+async def config_all(interaction: discord.Interaction, prefix: str, god_human: bool = None, level: int = None):
+    if prefix != PREFIX: return
+    data = {}
+    if os.path.exists(JSON_CONFIG):
+        with open(JSON_CONFIG, "r") as f: data = json.load(f)
+    if god_human is not None: data["god_human"] = god_human
+    if level is not None: data["level"] = level
+    with open(JSON_CONFIG, "w") as f: json.dump(data, f, indent=4)
+    print(f"⚙️ Config Updated!")
+
+bot.run(TOKEN)
     if id_may != MY_NAME: return
     folders = find_auto_folders()
     for fld in folders:
