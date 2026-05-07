@@ -110,30 +110,3 @@ async def config_all(interaction: discord.Interaction, prefix: str, god_human: b
     print(f"⚙️ Config Updated!")
 
 bot.run(TOKEN)
-    if id_may != MY_NAME: return
-    folders = find_auto_folders()
-    for fld in folders:
-        p = os.path.join(fld, ten_file)
-        if os.path.exists(p): os.remove(p)
-    await interaction.response.send_message(f"🗑️ Đã xóa `{ten_file}` trên {MY_NAME}")
-
-# --- [5] CONFIG CHANGE ---
-@bot.tree.command(name="config_change", description="Chỉnh file JSON")
-async def config_change(interaction: discord.Interaction, id_may: str, god_human: bool = None, level: int = None):
-    if id_may != MY_NAME: return
-    data = {}
-    if os.path.exists(JSON_CONFIG):
-        with open(JSON_CONFIG, "r") as f: data = json.load(f)
-    if god_human is not None: data["god_human"] = god_human
-    if level is not None: data["level"] = level
-    with open(JSON_CONFIG, "w") as f: json.dump(data, f, indent=4)
-    await interaction.response.send_message(f"✅ Đã update JSON cho {MY_NAME}")
-
-# --- [6] RESET TOKEN ---
-@bot.tree.command(name="reset_token", description="Xóa token cũ")
-async def reset_token(interaction: discord.Interaction):
-    if os.path.exists(TOKEN_PATH):
-        os.remove(TOKEN_PATH)
-        await interaction.response.send_message("🗑️ Đã xóa token. Hãy khởi động lại Termux.")
-
-bot.run(TOKEN)
