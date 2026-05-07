@@ -1,16 +1,16 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import os, json, asyncio
+import os, json, asyncio, datetime
 
-# --- HỆ THỐNG TỰ ĐỘNG LẤY DATA ---
+# --- LẤY DATA TỪ FILE ---
 TOKEN_PATH = "/sdcard/Download/bot_token.txt"
 NAME_PATH = "/sdcard/Download/name.txt"
 
 def get_token():
     if os.path.exists(TOKEN_PATH):
         with open(TOKEN_PATH, "r") as f: return f.read().strip()
-    tk = input("🔑 Lần đầu chạy, hãy nhập Token Bot: ").strip()
+    tk = input("🔑 Nhập Token Bot lần đầu: ").strip()
     with open(TOKEN_PATH, "w") as f: f.write(tk)
     return tk
 
@@ -23,7 +23,7 @@ TOKEN = get_token()
 MY_NAME = get_my_name()
 PREFIX = MY_NAME.split('-')[0]
 
-# --- CẤU HÌNH ĐƯỜNG DẪN ---
+# --- ĐƯỜNG DẪN ---
 COOKIE_FILE = "/sdcard/Download/cookie.txt"
 SWITCHED_DIR = "/sdcard/Download/Shouko/switched/"
 
@@ -44,32 +44,51 @@ def count_accs():
 @bot.event
 async def on_ready():
     await bot.tree.sync()
-    print(f"✅ {MY_NAME} ONLINE! (BOOT MODE)")
+    print(f"✅ {MY_NAME} ONLINE!")
 
-# --- [1] TOTAL ALL & GRAND TOTAL (TỔNG KẾT KÉP) ---
+# --- [1] TOTAL LẺ ---
+@bot.tree.command(name="total", description="Check lẻ 1 máy")
+async def total(interaction: discord.Interaction, id_may: str):
+    if id_may != MY_NAME: return
+    c, s = count_accs()
+    await interaction.response.send_message(f"📊 **{MY_NAME}**\n- 🍪 Cookie: `{c}`\n- 📦 Switched: `{s}`")
+
+# --- [2] TOTAL ALL (FIX LỖI CỘNG DỒN ẢO) ---
 @bot.tree.command(name="total_all", description="Tổng kết toàn dàn máy")
 async def total_all(interaction: discord.Interaction, prefix: str):
     if prefix != PREFIX: return
+    
+    # Lấy mốc thời gian khi vừa gõ lệnh
+    now = datetime.datetime.now(datetime.timezone.utc)
     c, s = count_accs()
+    
+    # Báo cáo lẻ từng máy
     await interaction.channel.send(f"🖥️ **{MY_NAME}** | 🍪:`{c}` | 📦:`{s}`")
     
     if "-1" in MY_NAME:
         await interaction.response.defer(ephemeral=True)
-        await asyncio.sleep(7)
+        await asyncio.sleep(8) # Đợi các máy khác nhắn xong
+        
         tc, ts = 0, 0
+        # Quét lịch sử tin nhắn
         async for msg in interaction.channel.history(limit=100):
+            # CHỈ CỘNG: Tin nhắn của Bot + Chứa icon 🖥️ + Chứa Prefix + Gửi SAU mốc 'now'
             if msg.author == bot.user and "🖥️" in msg.content and prefix in msg.content:
-                try:
-                    p = msg.content.split('`')
-                    tc += int(p[1]); ts += int(p[3])
-                except: continue
-        embed = discord.Embed(title=f"🏆 TỔNG KẾT DÀN {prefix.upper()}", color=0x00ff00)
+                if msg.created_at >= (now - datetime.timedelta(seconds=5)):
+                    try:
+                        p = msg.content.split('`')
+                        tc += int(p[1])
+                        ts += int(p[3])
+                    except: continue
+        
+        embed = discord.Embed(title=f"🏆 TỔNG KẾT DÀN {prefix.upper()}", color=0x2ecc71)
         embed.add_field(name="🍪 TỔNG COOKIE", value=f"`{tc}`", inline=True)
         embed.add_field(name="📦 TỔNG SWITCHED", value=f"`{ts}`", inline=True)
+        embed.set_footer(text=f"Cập nhật: {datetime.datetime.now().strftime('%H:%M:%S')}")
         await interaction.channel.send(embed=embed)
 
-# --- [2] PUT COOKIE ALL (CHIA ĐỀU) ---
-@bot.tree.command(name="put_cookie_all", description="Chia đều cookie cho dàn")
+# --- [3] CHIA ACC (PUT COOKIE ALL) ---
+@bot.tree.command(name="put_cookie_all", description="Chia đều cookie")
 async def put_cookie_all(interaction: discord.Interaction, prefix: str, tong_so_may: int, file: discord.Attachment):
     if prefix != PREFIX: return
     await interaction.response.defer(ephemeral=True)
@@ -82,10 +101,11 @@ async def put_cookie_all(interaction: discord.Interaction, prefix: str, tong_so_
         end = start + avg if my_num < tong_so_may else len(cookies)
         with open(COOKIE_FILE, "w", encoding="utf-8") as f:
             f.write("\n".join(cookies[start:end]))
+        print(f"✅ Đã nhận {len(cookies[start:end])} acc.")
     except: pass
 
-# --- [3] GET ALL (THU HOẠCH) ---
-@bot.tree.command(name="get_all", description="Lấy acc từ tất cả máy")
+# --- [4] THU HOẠCH (GET ALL) ---
+@bot.tree.command(name="get_all", description="Lấy file acc đã cày xong")
 async def get_all(interaction: discord.Interaction, prefix: str):
     if prefix != PREFIX: return
     if not os.path.exists(SWITCHED_DIR): return
@@ -95,8 +115,8 @@ async def get_all(interaction: discord.Interaction, prefix: str):
     await interaction.channel.send(content=f"📦 Acc {MY_NAME}", file=discord.File(f_p))
     with open(f_p, "w") as f: f.truncate(0)
 
-# --- [4] PUT SCRIPT ALL (NẠP SCRIPT) ---
-@bot.tree.command(name="put_script_all", description="Gửi script vào Autoexec")
+# --- [5] NẠP SCRIPT (PUT SCRIPT ALL) ---
+@bot.tree.command(name="put_script_all", description="Nạp script toàn dàn")
 async def put_script_all(interaction: discord.Interaction, prefix: str, file: discord.Attachment):
     if prefix != PREFIX: return
     for root, dirs, _ in os.walk("/sdcard/"):
