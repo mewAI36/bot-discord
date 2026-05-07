@@ -4,7 +4,7 @@ from discord.ext import commands
 import os, json, asyncio
 
 # ================= CẤU HÌNH =================
-TOKEN = "MTQ5MTI3OTU5OTM3NDU2NTQwNg.GDFPVa.2O19JOwvSt5GguMLVeOnPJc-3rof0f4JMbHD9k026"
+TOKEN = "MTQ5MTI3OTU5OTM3NDU2NTQwNg.Gdz70W.vBs8Ccsrl3Y43B5RIMz4MpBm9GCyW06CkjCMSs"
 COOKIE_FILE = "/sdcard/Download/cookie.txt"
 SWITCHED_DIR = "/sdcard/Download/Shouko/switched/"
 # ============================================
