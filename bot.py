@@ -24,8 +24,8 @@ COOKIE_FILE = BASE_DIR / "cookie.txt"
 SWITCHED_DIR = BASE_DIR / "Shouko" / "switched"
 
 AUTOEXEC_DIRS = [
-    Path("/sdcard/Codex/Autoexec,
-    Path("/sdcard/Delta/AutoExecute"),
+    Path("/sdcard/Codex/Autoexec"),
+    Path("/sdcard/Delta/Autoexecute"),
 ]
 
 REPORT_DELAY = 8
