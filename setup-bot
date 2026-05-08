@@ -1,0 +1,56 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+clear
+pkg update -y && pkg upgrade -y
+pkg install -y python curl
+
+DOWNLOAD_DIR="/storage/emulated/0/Download"
+BOOT_DIR="$HOME/.termux/boot"
+BOT_FILE="$DOWNLOAD_DIR/bot.py"
+TOKEN_FILE="$DOWNLOAD_DIR/bot_token.txt"
+NAME_FILE="$DOWNLOAD_DIR/name.txt"
+RUN_FILE="$BOOT_DIR/run_bot.sh"
+
+mkdir -p "$BOOT_DIR"
+mkdir -p "$DOWNLOAD_DIR"
+
+clear
+
+echo "=============================="
+echo "     AUTO INSTALL BOT"
+echo "=============================="
+
+read -p "Token : " BOT_TOKEN
+read -p "Tên máy : " MACHINE_NAME
+
+echo "$BOT_TOKEN" > "$TOKEN_FILE"
+echo "$MACHINE_NAME" > "$NAME_FILE"
+
+echo "Đang tải bot.py..."
+
+curl -L "https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py" -o "$BOT_FILE"
+
+chmod +x "$BOT_FILE"
+
+cat > "$RUN_FILE" << EOF
+#!/data/data/com.termux/files/usr/bin/bash
+cd /storage/emulated/0/Download
+python bot.py
+EOF
+
+chmod +x "$RUN_FILE"
+
+clear
+
+echo "=============================="
+echo "  INSTALL THÀNH CÔNG"
+echo "=============================="
+echo "bot.py: $BOT_FILE"
+echo "Token: $TOKEN_FILE"
+echo "Tên máy: $NAME_FILE"
+echo "Auto boot: $RUN_FILE"
+
+echo "Đang chạy bot..."
+
+cd "$DOWNLOAD_DIR"
+python bot.py
