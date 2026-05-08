@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands
 
-import time
-import shutil
-import random
-import zipfile
 import asyncio
+import random
+import shutil
 import tempfile
+import time
+import zipfile
 
 from pathlib import Path
 
@@ -21,7 +21,11 @@ NAME_PATH = BASE_DIR / "name.txt"
 
 COOKIE_FILE = BASE_DIR / "cookie.txt"
 
-SWITCHED_DIR = BASE_DIR / "Shouko" / "switched"
+SWITCHED_DIR = (
+    BASE_DIR /
+    "Shouko" /
+    "switched"
+)
 
 AUTOEXEC_DIRS = [
     Path("/sdcard/AutoExec"),
@@ -32,7 +36,7 @@ REPORT_DELAY = 8
 MAX_LINES_PER_FILE = 5000
 
 # ==================================================
-# RUNTIME CACHE
+# CACHE
 # ==================================================
 
 REPORT_SESSIONS = {}
@@ -41,24 +45,30 @@ REPORT_SESSIONS = {}
 # READ / WRITE
 # ==================================================
 
-
-def read_text(path: Path, default=""):
+def read_text(
+    path: Path,
+    default=""
+):
 
     try:
 
         if path.exists():
+
             return path.read_text(
                 encoding="utf-8"
             ).strip()
 
     except Exception as e:
+
         print(f"[READ ERROR] {e}")
 
     return default
 
 
-
-def write_text(path: Path, data: str):
+def write_text(
+    path: Path,
+    data: str
+):
 
     try:
 
@@ -73,8 +83,8 @@ def write_text(path: Path, data: str):
         )
 
     except Exception as e:
-        print(f"[WRITE ERROR] {e}")
 
+        print(f"[WRITE ERROR] {e}")
 
 # ==================================================
 # LOAD MACHINE
@@ -84,15 +94,24 @@ TOKEN = read_text(TOKEN_PATH)
 
 if not TOKEN:
 
-    TOKEN = input("Nhập token bot: ").strip()
+    TOKEN = input(
+        "Nhập token bot: "
+    ).strip()
 
-    write_text(TOKEN_PATH, TOKEN)
+    write_text(
+        TOKEN_PATH,
+        TOKEN
+    )
 
-MY_NAME = read_text(NAME_PATH, "unknown-1")
+MY_NAME = read_text(
+    NAME_PATH,
+    "unknown-1"
+)
 
 try:
 
     PREFIX, MACHINE_ID = MY_NAME.split("-")
+
     MACHINE_ID = int(MACHINE_ID)
 
 except:
@@ -117,7 +136,6 @@ bot = commands.Bot(
 # UTILS
 # ==================================================
 
-
 def count_lines(path: Path):
 
     if not path.exists():
@@ -126,11 +144,16 @@ def count_lines(path: Path):
     try:
 
         with path.open("rb") as f:
-            return sum(1 for line in f if line.strip())
+
+            return sum(
+                1
+                for line in f
+                if line.strip()
+            )
 
     except:
-        return 0
 
+        return 0
 
 
 def get_switched_file():
@@ -141,31 +164,43 @@ def get_switched_file():
     files = sorted([
         x
         for x in SWITCHED_DIR.iterdir()
-        if x.is_file() and x.suffix == ".txt"
+        if (
+            x.is_file()
+            and
+            x.suffix == ".txt"
+        )
     ])
 
     return files[0] if files else None
 
 
-
 def count_accounts():
 
-    cookie_count = count_lines(COOKIE_FILE)
+    cookie_count = count_lines(
+        COOKIE_FILE
+    )
 
     switched_count = 0
 
     switched_file = get_switched_file()
 
     if switched_file:
-        switched_count = count_lines(switched_file)
 
-    return cookie_count, switched_count
+        switched_count = count_lines(
+            switched_file
+        )
 
+    return (
+        cookie_count,
+        switched_count
+    )
 
 
 def make_machine_data():
 
-    cookie_count, switched_count = count_accounts()
+    cookie_count, switched_count = (
+        count_accounts()
+    )
 
     return {
         "machine": MY_NAME,
@@ -174,24 +209,42 @@ def make_machine_data():
     }
 
 
-
-def split_file(path: Path, lines_per_file=MAX_LINES_PER_FILE):
+def split_file(
+    path: Path,
+    lines_per_file=MAX_LINES_PER_FILE
+):
 
     parts = []
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(
+        path,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
         lines = f.readlines()
 
-    for i in range(0, len(lines), lines_per_file):
+    for i in range(
+        0,
+        len(lines),
+        lines_per_file
+    ):
 
-        chunk = lines[i:i + lines_per_file]
+        chunk = lines[
+            i:i + lines_per_file
+        ]
 
         chunk_path = (
             path.parent /
             f"{path.stem}_part_{i // lines_per_file}.txt"
         )
 
-        with open(chunk_path, "w", encoding="utf-8") as out:
+        with open(
+            chunk_path,
+            "w",
+            encoding="utf-8"
+        ) as out:
+
             out.writelines(chunk)
 
         parts.append(chunk_path)
@@ -199,8 +252,9 @@ def split_file(path: Path, lines_per_file=MAX_LINES_PER_FILE):
     return parts
 
 
-
-def zip_single_file(file_path: Path):
+def zip_single_file(
+    file_path: Path
+):
 
     tmp = tempfile.NamedTemporaryFile(
         suffix=".zip",
@@ -225,23 +279,34 @@ def zip_single_file(file_path: Path):
     return zip_path
 
 
-async def send_large_file(channel, file_path: Path, title: str):
+async def send_large_file(
+    channel,
+    file_path: Path,
+    title: str
+):
 
     if not file_path.exists():
         return False
 
-    total = count_lines(file_path)
+    total = count_lines(
+        file_path
+    )
 
     if total <= 0:
         return False
 
     parts = split_file(file_path)
 
-    for index, part in enumerate(parts, start=1):
+    for index, part in enumerate(
+        parts,
+        start=1
+    ):
 
         try:
 
-            zip_path = zip_single_file(part)
+            zip_path = zip_single_file(
+                part
+            )
 
             await channel.send(
                 content=(
@@ -258,17 +323,30 @@ async def send_large_file(channel, file_path: Path, title: str):
             await asyncio.sleep(1)
 
             try:
-                zip_path.unlink(missing_ok=True)
+
+                zip_path.unlink(
+                    missing_ok=True
+                )
+
+            except:
+                pass
+
+            try:
+
+                part.unlink(
+                    missing_ok=True
+                )
+
             except:
                 pass
 
         except Exception as e:
 
             print(f"[SEND ERROR] {e}")
+
             return False
 
     return True
-
 
 # ==================================================
 # EVENTS
@@ -278,15 +356,23 @@ async def send_large_file(channel, file_path: Path, title: str):
 async def on_ready():
 
     try:
+
         await bot.tree.sync()
+
     except Exception as e:
+
         print(e)
 
     print(f"✅ ONLINE: {MY_NAME}")
 
 
 @bot.event
-async def on_message(message: discord.Message):
+async def on_message(
+    message: discord.Message
+):
+
+    if message.author.bot:
+        return
 
     content = message.content
 
@@ -294,11 +380,15 @@ async def on_message(message: discord.Message):
     # TOTAL REQUEST
     # ==================================================
 
-    if content.startswith("TOTAL_REQUEST|"):
+    if content.startswith(
+        "TOTAL_REQUEST|"
+    ):
 
         try:
 
-            _, session_id, prefix = content.split("|")
+            _, session_id, prefix = (
+                content.split("|")
+            )
 
             if prefix != PREFIX:
                 return
@@ -316,32 +406,114 @@ async def on_message(message: discord.Message):
             )
 
         except Exception as e:
+
+            print(e)
+
+    # ==================================================
+    # PUT COOKIE
+    # ==================================================
+
+    elif content.startswith(
+        "PUT_COOKIE|"
+    ):
+
+        try:
+
+            _, prefix, machine_id = (
+                content.split("|")
+            )
+
+            if prefix != PREFIX:
+                return
+
+            if int(machine_id) != MACHINE_ID:
+                return
+
+            if not message.attachments:
+                return
+
+            attachment = (
+                message.attachments[0]
+            )
+
+            temp_path = (
+                BASE_DIR /
+                f"temp_cookie_{MACHINE_ID}.txt"
+            )
+
+            await attachment.save(
+                temp_path
+            )
+
+            cookie_data = read_text(
+                temp_path
+            )
+
+            if not cookie_data:
+                return
+
+            write_text(
+                COOKIE_FILE,
+                cookie_data
+            )
+
+            print(
+                f"✅ RECEIVED COOKIE: {MY_NAME}"
+            )
+
+            try:
+
+                temp_path.unlink(
+                    missing_ok=True
+                )
+
+            except:
+                pass
+
+        except Exception as e:
+
             print(e)
 
     # ==================================================
     # TOTAL RESPONSE
     # ==================================================
 
-    elif content.startswith("TOTAL_RESPONSE|"):
+    elif content.startswith(
+        "TOTAL_RESPONSE|"
+    ):
 
         try:
 
-            _, session_id, machine, cookie, switched = content.split("|")
+            (
+                _,
+                session_id,
+                machine,
+                cookie,
+                switched
+            ) = content.split("|")
 
-            if session_id not in REPORT_SESSIONS:
+            if (
+                session_id
+                not in REPORT_SESSIONS
+            ):
                 return
 
-            REPORT_SESSIONS[session_id][machine] = {
+            REPORT_SESSIONS[
+                session_id
+            ][machine] = {
+
                 "machine": machine,
                 "cookie": int(cookie),
                 "switched": int(switched),
             }
 
         except Exception as e:
+
             print(e)
 
-    await bot.process_commands(message)
-
+    await bot.process_commands(
+        message
+    )
 
 # ==================================================
 # TOTAL
@@ -349,7 +521,7 @@ async def on_message(message: discord.Message):
 
 @bot.tree.command(
     name="total",
-    description="Check máy"
+    description="Check machine"
 )
 async def total(
     interaction: discord.Interaction,
@@ -359,7 +531,9 @@ async def total(
     if machine != MY_NAME:
         return
 
-    cookie_count, switched_count = count_accounts()
+    cookie_count, switched_count = (
+        count_accounts()
+    )
 
     embed = discord.Embed(
         title=f"🖥️ {MY_NAME}",
@@ -378,16 +552,17 @@ async def total(
         inline=True
     )
 
-    await interaction.response.send_message(embed=embed)
-
+    await interaction.response.send_message(
+        embed=embed
+    )
 
 # ==================================================
-# TOTAL ALL FIXED
+# TOTAL ALL
 # ==================================================
 
 @bot.tree.command(
     name="total_all",
-    description="Total acc all"
+    description="Total acc all machine"
 )
 async def total_all(
     interaction: discord.Interaction,
@@ -399,36 +574,52 @@ async def total_all(
 
     await interaction.response.defer()
 
-    session_id = str(int(time.time() * 1000))
+    session_id = str(
+        int(time.time() * 1000)
+    )
 
-    REPORT_SESSIONS[session_id] = {}
+    REPORT_SESSIONS[
+        session_id
+    ] = {}
 
-    # add current machine
-    REPORT_SESSIONS[session_id][MY_NAME] = make_machine_data()
+    REPORT_SESSIONS[
+        session_id
+    ][MY_NAME] = make_machine_data()
 
-    # broadcast
     await interaction.channel.send(
         f"TOTAL_REQUEST|{session_id}|{prefix}"
     )
 
-    await asyncio.sleep(REPORT_DELAY)
+    await asyncio.sleep(
+        REPORT_DELAY
+    )
 
-    data = REPORT_SESSIONS.get(session_id, {})
+    data = REPORT_SESSIONS.get(
+        session_id,
+        {}
+    )
 
     total_cookie = 0
     total_switched = 0
 
     lines = []
 
-    for machine, info in sorted(data.items()):
+    for machine_name in sorted(
+        data.keys()
+    ):
 
-        total_cookie += info["cookie"]
-        total_switched += info["switched"]
+        info = data[machine_name]
+
+        cookie = info["cookie"]
+        switched = info["switched"]
+
+        total_cookie += cookie
+        total_switched += switched
 
         lines.append(
-            f"`{machine}` | "
-            f"Cookie `{info['cookie']}` | "
-            f"Switched `{info['switched']}`"
+            f"🖥️ `{machine_name}`"
+            f"\n🍪 Cookie: `{cookie}`"
+            f"\n🔁 Switched: `{switched}`"
         )
 
     embed = discord.Embed(
@@ -449,88 +640,150 @@ async def total_all(
     )
 
     embed.add_field(
-        name="🖥️ MACHINES",
-        value="\n".join(lines) if lines else "No data",
+        name=f"🖥️ MACHINES ({len(data)})",
+        value=(
+            "\n\n".join(lines)
+            if lines else "No data"
+        ),
         inline=False
     )
 
-    embed.set_footer(
-        text=f"{len(data)} machines"
+    await interaction.followup.send(
+        embed=embed
     )
 
-    await interaction.followup.send(embed=embed)
-
-    REPORT_SESSIONS.pop(session_id, None)
-
+    REPORT_SESSIONS.pop(
+        session_id,
+        None
+    )
 
 # ==================================================
-# PUT COOKIE ALL FIXED
+# PUT COOKIE ALL
 # ==================================================
 
 @bot.tree.command(
     name="put_cookie_all",
-    description="Chia cookie all machine"
+    description="Split cookie all machine"
 )
 async def put_cookie_all(
     interaction: discord.Interaction,
     prefix: str,
+    total_machines: int,
     file: discord.Attachment
 ):
 
     if prefix != PREFIX:
         return
 
-    # mỗi máy tự xử lý riêng
-    # KHÔNG dùng tong_so_may nữa
+    await interaction.response.defer()
 
     try:
 
+        if total_machines <= 0:
+
+            return await interaction.followup.send(
+                "❌ total_machines invalid"
+            )
+
         raw = await file.read()
 
-        content = raw.decode("utf-8")
-
-        cookies = [
-            x.strip()
-            for x in content.splitlines()
-            if x.strip()
-        ]
-
-        total = len(cookies)
-
-        if total <= 0:
-            return
-
-        # ==================================================
-        # MACHINE FILTER
-        # ==================================================
-
-        my_cookies = []
-
-        for index, cookie in enumerate(cookies):
-
-            machine_slot = (index % 100) + 1
-
-            if machine_slot == MACHINE_ID:
-                my_cookies.append(cookie)
-
-        if not my_cookies:
-            return
-
-        write_text(
-            COOKIE_FILE,
-            "\n".join(my_cookies)
+        content = raw.decode(
+            "utf-8",
+            errors="ignore"
         )
 
-        await interaction.response.send_message(
-            f"✅ {MY_NAME} nhận `{len(my_cookies)}` acc"
+        cookies = [
+            line.strip()
+            for line in content.splitlines()
+            if line.strip()
+        ]
+
+        total_cookie = len(cookies)
+
+        if total_cookie <= 0:
+
+            return await interaction.followup.send(
+                "❌ File rỗng"
+            )
+
+        chunks = [
+            []
+            for _ in range(
+                total_machines
+            )
+        ]
+
+        for index, cookie in enumerate(
+            cookies
+        ):
+
+            machine_index = (
+                index % total_machines
+            )
+
+            chunks[
+                machine_index
+            ].append(cookie)
+
+        sent = 0
+
+        for machine_id, machine_cookies in enumerate(
+            chunks,
+            start=1
+        ):
+
+            if not machine_cookies:
+                continue
+
+            temp_path = (
+                BASE_DIR /
+                f"temp_cookie_{machine_id}.txt"
+            )
+
+            write_text(
+                temp_path,
+                "\n".join(machine_cookies)
+            )
+
+            await interaction.channel.send(
+                content=(
+                    f"PUT_COOKIE|"
+                    f"{prefix}|"
+                    f"{machine_id}"
+                ),
+                file=discord.File(
+                    temp_path,
+                    filename=f"cookie_{machine_id}.txt"
+                )
+            )
+
+            sent += len(
+                machine_cookies
+            )
+
+            await asyncio.sleep(1)
+
+            try:
+
+                temp_path.unlink(
+                    missing_ok=True
+                )
+
+            except:
+                pass
+
+        await interaction.followup.send(
+            (
+                f"✅ Split `{sent}` cookie"
+                f" -> `{total_machines}` machines"
+            )
         )
 
     except Exception as e:
 
-        await interaction.response.send_message(
-            f"❌ {e}"
+        await interaction.followup.send(
+            f"❌ ERROR: {e}"
         )
-
 
 # ==================================================
 # GET
@@ -540,7 +793,9 @@ async def put_cookie_all(
     name="get",
     description="Get switched machine"
 )
-async def get(interaction: discord.Interaction):
+async def get(
+    interaction: discord.Interaction
+):
 
     await interaction.response.defer()
 
@@ -552,7 +807,9 @@ async def get(interaction: discord.Interaction):
             "❌ Không có file"
         )
 
-    total = count_lines(switched_file)
+    total = count_lines(
+        switched_file
+    )
 
     if total <= 0:
 
@@ -568,17 +825,24 @@ async def get(interaction: discord.Interaction):
 
     if success:
 
-        backup = switched_file.with_suffix(".sent")
+        backup = switched_file.with_suffix(
+            ".sent"
+        )
 
         try:
-            shutil.move(switched_file, backup)
+
+            shutil.move(
+                switched_file,
+                backup
+            )
+
         except Exception as e:
+
             print(e)
 
         await interaction.followup.send(
             f"✅ Sent `{total}` acc"
         )
-
 
 # ==================================================
 # GET ALL
@@ -603,12 +867,17 @@ async def get_all(
     if not switched_file:
         return
 
-    total = count_lines(switched_file)
+    total = count_lines(
+        switched_file
+    )
 
     if total <= 0:
         return
 
-    delay = random.randint(1, 10)
+    delay = random.randint(
+        1,
+        10
+    )
 
     await asyncio.sleep(delay)
 
@@ -620,13 +889,20 @@ async def get_all(
 
     if success:
 
-        backup = switched_file.with_suffix(".sent")
+        backup = switched_file.with_suffix(
+            ".sent"
+        )
 
         try:
-            shutil.move(switched_file, backup)
-        except Exception as e:
-            print(e)
 
+            shutil.move(
+                switched_file,
+                backup
+            )
+
+        except Exception as e:
+
+            print(e)
 
 # ==================================================
 # PUT SCRIPT ALL
@@ -656,19 +932,24 @@ async def put_script_all(
                 exist_ok=True
             )
 
-            save_path = path / file.filename
+            save_path = (
+                path /
+                file.filename
+            )
 
-            await file.save(save_path)
+            await file.save(
+                save_path
+            )
 
             saved += 1
 
         except Exception as e:
+
             print(e)
 
     await interaction.response.send_message(
         f"✅ Saved `{saved}` places"
     )
-
 
 # ==================================================
 # RUN
