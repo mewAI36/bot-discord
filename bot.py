@@ -55,8 +55,9 @@ def read_text(
         if path.exists():
 
             return path.read_text(
-                encoding="utf-8"
-            ).strip()
+                encoding="utf-8",
+                errors="ignore"
+            )
 
     except Exception as e:
 
@@ -90,7 +91,7 @@ def write_text(
 # LOAD MACHINE
 # ==================================================
 
-TOKEN = read_text(TOKEN_PATH)
+TOKEN = read_text(TOKEN_PATH).strip()
 
 if not TOKEN:
 
@@ -106,7 +107,7 @@ if not TOKEN:
 MY_NAME = read_text(
     NAME_PATH,
     "unknown-1"
-)
+).strip()
 
 try:
 
@@ -143,7 +144,11 @@ def count_lines(path: Path):
 
     try:
 
-        with path.open("rb") as f:
+        with path.open(
+            "r",
+            encoding="utf-8",
+            errors="ignore"
+        ) as f:
 
             return sum(
                 1
@@ -152,7 +157,6 @@ def count_lines(path: Path):
             )
 
     except:
-
         return 0
 
 
@@ -219,7 +223,8 @@ def split_file(
     with open(
         path,
         "r",
-        encoding="utf-8"
+        encoding="utf-8",
+        errors="ignore"
     ) as f:
 
         lines = f.readlines()
@@ -323,20 +328,16 @@ async def send_large_file(
             await asyncio.sleep(1)
 
             try:
-
                 zip_path.unlink(
                     missing_ok=True
                 )
-
             except:
                 pass
 
             try:
-
                 part.unlink(
                     missing_ok=True
                 )
-
             except:
                 pass
 
@@ -356,11 +357,8 @@ async def send_large_file(
 async def on_ready():
 
     try:
-
         await bot.tree.sync()
-
     except Exception as e:
-
         print(e)
 
     print(f"✅ ONLINE: {MY_NAME}")
@@ -370,9 +368,6 @@ async def on_ready():
 async def on_message(
     message: discord.Message
 ):
-
-    if message.author.bot:
-        return
 
     content = message.content
 
@@ -406,7 +401,6 @@ async def on_message(
             )
 
         except Exception as e:
-
             print(e)
 
     # ==================================================
@@ -445,16 +439,22 @@ async def on_message(
                 temp_path
             )
 
-            cookie_data = read_text(
-                temp_path
+            cookie_data = temp_path.read_text(
+                encoding="utf-8",
+                errors="ignore"
             )
 
-            if not cookie_data:
+            if not cookie_data.strip():
                 return
 
-            write_text(
-                COOKIE_FILE,
-                cookie_data
+            COOKIE_FILE.parent.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            COOKIE_FILE.write_text(
+                cookie_data,
+                encoding="utf-8"
             )
 
             print(
@@ -462,16 +462,13 @@ async def on_message(
             )
 
             try:
-
                 temp_path.unlink(
                     missing_ok=True
                 )
-
             except:
                 pass
 
         except Exception as e:
-
             print(e)
 
     # ==================================================
@@ -508,7 +505,6 @@ async def on_message(
             }
 
         except Exception as e:
-
             print(e)
 
     await bot.process_commands(
@@ -582,10 +578,12 @@ async def total_all(
         session_id
     ] = {}
 
+    # self
     REPORT_SESSIONS[
         session_id
     ][MY_NAME] = make_machine_data()
 
+    # broadcast
     await interaction.channel.send(
         f"TOTAL_REQUEST|{session_id}|{prefix}"
     )
@@ -618,8 +616,8 @@ async def total_all(
 
         lines.append(
             f"🖥️ `{machine_name}`"
-            f"\n🍪 Cookie: `{cookie}`"
-            f"\n🔁 Switched: `{switched}`"
+            f"\n🍪 Cookie `{cookie}`"
+            f"\n🔁 Switched `{switched}`"
         )
 
     embed = discord.Embed(
@@ -713,6 +711,7 @@ async def put_cookie_all(
             )
         ]
 
+        # chia đều
         for index, cookie in enumerate(
             cookies
         ):
@@ -740,9 +739,9 @@ async def put_cookie_all(
                 f"temp_cookie_{machine_id}.txt"
             )
 
-            write_text(
-                temp_path,
-                "\n".join(machine_cookies)
+            temp_path.write_text(
+                "\n".join(machine_cookies),
+                encoding="utf-8"
             )
 
             await interaction.channel.send(
@@ -764,11 +763,9 @@ async def put_cookie_all(
             await asyncio.sleep(1)
 
             try:
-
                 temp_path.unlink(
                     missing_ok=True
                 )
-
             except:
                 pass
 
@@ -830,14 +827,11 @@ async def get(
         )
 
         try:
-
             shutil.move(
                 switched_file,
                 backup
             )
-
         except Exception as e:
-
             print(e)
 
         await interaction.followup.send(
@@ -894,14 +888,11 @@ async def get_all(
         )
 
         try:
-
             shutil.move(
                 switched_file,
                 backup
             )
-
         except Exception as e:
-
             print(e)
 
 # ==================================================
@@ -944,7 +935,6 @@ async def put_script_all(
             saved += 1
 
         except Exception as e:
-
             print(e)
 
     await interaction.response.send_message(
