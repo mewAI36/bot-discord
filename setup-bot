@@ -1,24 +1,58 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 clear
+
 pkg update -y && pkg upgrade -y
-pkg install -y python curl
+
+pkg install -y \
+python \
+python-pip \
+git \
+curl \
+wget \
+ffmpeg \
+openssl \
+clang \
+make \
+libjpeg-turbo \
+libpng \
+rust
+
+pip install --upgrade pip setuptools wheel
+
+pip install -U \
+discord.py \
+py-cord \
+nextcord \
+requests \
+aiohttp \
+flask \
+colorama \
+pynacl \
+python-dotenv \
+psutil \
+pillow \
+youtube_dl \
+yt_dlp \
+gtts \
+numpy
 
 DOWNLOAD_DIR="/storage/emulated/0/Download"
 BOOT_DIR="$HOME/.termux/boot"
+
+mkdir -p "$DOWNLOAD_DIR"
+mkdir -p "$BOOT_DIR"
+
 BOT_FILE="$DOWNLOAD_DIR/bot.py"
 TOKEN_FILE="$DOWNLOAD_DIR/bot_token.txt"
 NAME_FILE="$DOWNLOAD_DIR/name.txt"
 RUN_FILE="$BOOT_DIR/run_bot.sh"
 
-mkdir -p "$BOOT_DIR"
-mkdir -p "$DOWNLOAD_DIR"
-
-clear
-
-echo "=============================="
-echo "     AUTO INSTALL BOT"
-echo "=============================="
+echo ""
+echo "======================"
+echo "   INSTALL BOT AUTO"
+echo "======================"
+echo ""
 
 read -p "Token : " BOT_TOKEN
 read -p "Tên máy : " MACHINE_NAME
@@ -26,31 +60,31 @@ read -p "Tên máy : " MACHINE_NAME
 echo "$BOT_TOKEN" > "$TOKEN_FILE"
 echo "$MACHINE_NAME" > "$NAME_FILE"
 
+echo ""
 echo "Đang tải bot.py..."
+echo ""
 
-curl -L "https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py" -o "$BOT_FILE"
+curl -L \
+"https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py" \
+-o "$BOT_FILE"
 
 chmod +x "$BOT_FILE"
 
 cat > "$RUN_FILE" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
+termux-wake-lock
 cd /storage/emulated/0/Download
 python bot.py
 EOF
 
 chmod +x "$RUN_FILE"
 
-clear
-
-echo "=============================="
-echo "  INSTALL THÀNH CÔNG"
-echo "=============================="
-echo "bot.py: $BOT_FILE"
-echo "Token: $TOKEN_FILE"
-echo "Tên máy: $NAME_FILE"
-echo "Auto boot: $RUN_FILE"
-
-echo "Đang chạy bot..."
+echo ""
+echo "======================"
+echo " INSTALL THÀNH CÔNG"
+echo "======================"
+echo ""
 
 cd "$DOWNLOAD_DIR"
+
 python bot.py
