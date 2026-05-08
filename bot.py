@@ -28,8 +28,7 @@ SWITCHED_DIR = (
 )
 
 AUTOEXEC_DIRS = [
-    Path("/sdcard/AutoExec"),
-    Path("/sdcard/AutoExecute"),
+    Path("/sdcard/Delta/Autoexecute"),
 ]
 
 REPORT_DELAY = 8
@@ -91,7 +90,9 @@ def write_text(
 # LOAD MACHINE
 # ==================================================
 
-TOKEN = read_text(TOKEN_PATH).strip()
+TOKEN = read_text(
+    TOKEN_PATH
+).strip()
 
 if not TOKEN:
 
@@ -111,9 +112,13 @@ MY_NAME = read_text(
 
 try:
 
-    PREFIX, MACHINE_ID = MY_NAME.split("-")
+    PREFIX, MACHINE_ID = (
+        MY_NAME.split("-")
+    )
 
-    MACHINE_ID = int(MACHINE_ID)
+    MACHINE_ID = int(
+        MACHINE_ID
+    )
 
 except:
 
@@ -472,6 +477,127 @@ async def on_message(
             print(e)
 
     # ==================================================
+    # PUT SCRIPT
+    # ==================================================
+
+    elif content.startswith(
+        "PUT_SCRIPT|"
+    ):
+
+        try:
+
+            _, prefix = (
+                content.split("|")
+            )
+
+            if prefix != PREFIX:
+                return
+
+            if not message.attachments:
+                return
+
+            attachment = (
+                message.attachments[0]
+            )
+
+            saved = 0
+
+            for path in AUTOEXEC_DIRS:
+
+                try:
+
+                    path.mkdir(
+                        parents=True,
+                        exist_ok=True
+                    )
+
+                    save_path = (
+                        path /
+                        attachment.filename
+                    )
+
+                    await attachment.save(
+                        save_path
+                    )
+
+                    saved += 1
+
+                except Exception as e:
+                    print(e)
+
+            print(
+                f"✅ SCRIPT SAVED {saved}"
+            )
+
+        except Exception as e:
+            print(e)
+
+    # ==================================================
+    # GET ALL REQUEST
+    # ==================================================
+
+    elif content.startswith(
+        "GET_ALL_REQUEST|"
+    ):
+
+        try:
+
+            _, prefix = (
+                content.split("|")
+            )
+
+            if prefix != PREFIX:
+                return
+
+            switched_file = (
+                get_switched_file()
+            )
+
+            if not switched_file:
+                return
+
+            total = count_lines(
+                switched_file
+            )
+
+            if total <= 0:
+                return
+
+            delay = random.randint(
+                1,
+                10
+            )
+
+            await asyncio.sleep(delay)
+
+            success = await send_large_file(
+                message.channel,
+                switched_file,
+                MY_NAME
+            )
+
+            if success:
+
+                backup = (
+                    switched_file.with_suffix(
+                        ".sent"
+                    )
+                )
+
+                try:
+
+                    shutil.move(
+                        switched_file,
+                        backup
+                    )
+
+                except Exception as e:
+                    print(e)
+
+        except Exception as e:
+            print(e)
+
+    # ==================================================
     # TOTAL RESPONSE
     # ==================================================
 
@@ -578,12 +704,10 @@ async def total_all(
         session_id
     ] = {}
 
-    # self
     REPORT_SESSIONS[
         session_id
     ][MY_NAME] = make_machine_data()
 
-    # broadcast
     await interaction.channel.send(
         f"TOTAL_REQUEST|{session_id}|{prefix}"
     )
@@ -656,6 +780,64 @@ async def total_all(
     )
 
 # ==================================================
+# PUT COOKIE LOCAL
+# ==================================================
+
+@bot.tree.command(
+    name="put_cookie",
+    description="Put cookie local machine"
+)
+async def put_cookie(
+    interaction: discord.Interaction,
+    file: discord.Attachment
+):
+
+    await interaction.response.defer()
+
+    try:
+
+        raw = await file.read()
+
+        content = raw.decode(
+            "utf-8",
+            errors="ignore"
+        )
+
+        cookies = [
+            line.strip()
+            for line in content.splitlines()
+            if line.strip()
+        ]
+
+        total = len(cookies)
+
+        if total <= 0:
+
+            return await interaction.followup.send(
+                "❌ File rỗng"
+            )
+
+        COOKIE_FILE.parent.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        COOKIE_FILE.write_text(
+            "\n".join(cookies),
+            encoding="utf-8"
+        )
+
+        await interaction.followup.send(
+            f"✅ Saved `{total}` cookie"
+        )
+
+    except Exception as e:
+
+        await interaction.followup.send(
+            f"❌ ERROR: {e}"
+        )
+
+# ==================================================
 # PUT COOKIE ALL
 # ==================================================
 
@@ -711,7 +893,6 @@ async def put_cookie_all(
             )
         ]
 
-        # chia đều
         for index, cookie in enumerate(
             cookies
         ):
@@ -781,6 +962,81 @@ async def put_cookie_all(
         await interaction.followup.send(
             f"❌ ERROR: {e}"
         )
+
+# ==================================================
+# PUT AUTOEXEC LOCAL
+# ==================================================
+
+@bot.tree.command(
+    name="put_autoexec",
+    description="Put autoexec local machine"
+)
+async def put_autoexec(
+    interaction: discord.Interaction,
+    file: discord.Attachment
+):
+
+    await interaction.response.defer()
+
+    saved = 0
+
+    for path in AUTOEXEC_DIRS:
+
+        try:
+
+            path.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            save_path = (
+                path /
+                file.filename
+            )
+
+            await file.save(
+                save_path
+            )
+
+            saved += 1
+
+        except Exception as e:
+            print(e)
+
+    await interaction.followup.send(
+        (
+            f"✅ Saved `{file.filename}`"
+            f" to `{saved}` places"
+        )
+    )
+
+# ==================================================
+# PUT AUTOEXEC ALL
+# ==================================================
+
+@bot.tree.command(
+    name="put_script_all",
+    description="Put script all machine"
+)
+async def put_script_all(
+    interaction: discord.Interaction,
+    prefix: str,
+    file: discord.Attachment
+):
+
+    if prefix != PREFIX:
+        return
+
+    await interaction.response.defer()
+
+    await interaction.channel.send(
+        content=f"PUT_SCRIPT|{prefix}",
+        file=await file.to_file()
+    )
+
+    await interaction.followup.send(
+        f"✅ Broadcasted `{file.filename}`"
+    )
 
 # ==================================================
 # GET
@@ -856,89 +1112,12 @@ async def get_all(
 
     await interaction.response.defer()
 
-    switched_file = get_switched_file()
-
-    if not switched_file:
-        return
-
-    total = count_lines(
-        switched_file
+    await interaction.channel.send(
+        f"GET_ALL_REQUEST|{prefix}"
     )
 
-    if total <= 0:
-        return
-
-    delay = random.randint(
-        1,
-        10
-    )
-
-    await asyncio.sleep(delay)
-
-    success = await send_large_file(
-        interaction.channel,
-        switched_file,
-        MY_NAME
-    )
-
-    if success:
-
-        backup = switched_file.with_suffix(
-            ".sent"
-        )
-
-        try:
-            shutil.move(
-                switched_file,
-                backup
-            )
-        except Exception as e:
-            print(e)
-
-# ==================================================
-# PUT SCRIPT ALL
-# ==================================================
-
-@bot.tree.command(
-    name="put_script_all",
-    description="Put script all"
-)
-async def put_script_all(
-    interaction: discord.Interaction,
-    prefix: str,
-    file: discord.Attachment
-):
-
-    if prefix != PREFIX:
-        return
-
-    saved = 0
-
-    for path in AUTOEXEC_DIRS:
-
-        try:
-
-            path.mkdir(
-                parents=True,
-                exist_ok=True
-            )
-
-            save_path = (
-                path /
-                file.filename
-            )
-
-            await file.save(
-                save_path
-            )
-
-            saved += 1
-
-        except Exception as e:
-            print(e)
-
-    await interaction.response.send_message(
-        f"✅ Saved `{saved}` places"
+    await interaction.followup.send(
+        "📦 Requested all machines"
     )
 
 # ==================================================
