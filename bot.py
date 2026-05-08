@@ -1,8 +1,6 @@
 import discord
 from discord.ext import commands
 
-import os
-import io
 import time
 import shutil
 import random
@@ -26,13 +24,12 @@ COOKIE_FILE = BASE_DIR / "cookie.txt"
 SWITCHED_DIR = BASE_DIR / "Shouko" / "switched"
 
 AUTOEXEC_DIRS = [
-    Path("/sdcard/AutoExec"),
-    Path("/sdcard/AutoExecute"),
+    Path("/sdcard/Codex/Autoexec,
+    Path("/sdcard/Delta/AutoExecute"),
 ]
 
-REPORT_DELAY = 5
+REPORT_DELAY = 8
 MAX_LINES_PER_FILE = 5000
-MAX_ZIP_SIZE_MB = 20
 
 # ==================================================
 # RUNTIME CACHE
@@ -46,42 +43,62 @@ REPORT_SESSIONS = {}
 
 
 def read_text(path: Path, default=""):
+
     try:
+
         if path.exists():
-            return path.read_text(encoding="utf-8").strip()
+            return path.read_text(
+                encoding="utf-8"
+            ).strip()
+
     except Exception as e:
-        print(f"[READ ERROR] {path}: {e}")
+        print(f"[READ ERROR] {e}")
 
     return default
 
 
 
 def write_text(path: Path, data: str):
+
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(data, encoding="utf-8")
+
+        path.parent.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        path.write_text(
+            data,
+            encoding="utf-8"
+        )
+
     except Exception as e:
-        print(f"[WRITE ERROR] {path}: {e}")
+        print(f"[WRITE ERROR] {e}")
 
 
 # ==================================================
-# LOAD DATA
+# LOAD MACHINE
 # ==================================================
 
 TOKEN = read_text(TOKEN_PATH)
 
 if not TOKEN:
-    TOKEN = input("Nhập Token Bot: ").strip()
+
+    TOKEN = input("Nhập token bot: ").strip()
+
     write_text(TOKEN_PATH, TOKEN)
 
-MY_NAME = read_text(NAME_PATH, "unknown-0")
+MY_NAME = read_text(NAME_PATH, "unknown-1")
 
 try:
+
     PREFIX, MACHINE_ID = MY_NAME.split("-")
     MACHINE_ID = int(MACHINE_ID)
+
 except:
+
     PREFIX = "unknown"
-    MACHINE_ID = 0
+    MACHINE_ID = 1
 
 # ==================================================
 # DISCORD
@@ -107,8 +124,10 @@ def count_lines(path: Path):
         return 0
 
     try:
+
         with path.open("rb") as f:
             return sum(1 for line in f if line.strip())
+
     except:
         return 0
 
@@ -120,9 +139,9 @@ def get_switched_file():
         return None
 
     files = sorted([
-        f
-        for f in SWITCHED_DIR.iterdir()
-        if f.is_file() and f.suffix == ".txt"
+        x
+        for x in SWITCHED_DIR.iterdir()
+        if x.is_file() and x.suffix == ".txt"
     ])
 
     return files[0] if files else None
@@ -183,14 +202,14 @@ def split_file(path: Path, lines_per_file=MAX_LINES_PER_FILE):
 
 def zip_single_file(file_path: Path):
 
-    temp_zip = tempfile.NamedTemporaryFile(
+    tmp = tempfile.NamedTemporaryFile(
         suffix=".zip",
         delete=False
     )
 
-    zip_path = Path(temp_zip.name)
+    zip_path = Path(tmp.name)
 
-    temp_zip.close()
+    tmp.close()
 
     with zipfile.ZipFile(
         zip_path,
@@ -198,7 +217,10 @@ def zip_single_file(file_path: Path):
         zipfile.ZIP_DEFLATED
     ) as zipf:
 
-        zipf.write(file_path, arcname=file_path.name)
+        zipf.write(
+            file_path,
+            arcname=file_path.name
+        )
 
     return zip_path
 
@@ -213,19 +235,19 @@ async def send_large_file(channel, file_path: Path, title: str):
     if total <= 0:
         return False
 
-    # split trước
     parts = split_file(file_path)
 
     for index, part in enumerate(parts, start=1):
 
         try:
+
             zip_path = zip_single_file(part)
 
             await channel.send(
                 content=(
                     f"📦 {title}"
                     f" | part `{index}/{len(parts)}`"
-                    f" | `{count_lines(part)}` accounts"
+                    f" | `{count_lines(part)}` acc"
                 ),
                 file=discord.File(
                     zip_path,
@@ -241,6 +263,7 @@ async def send_large_file(channel, file_path: Path, title: str):
                 pass
 
         except Exception as e:
+
             print(f"[SEND ERROR] {e}")
             return False
 
@@ -259,14 +282,11 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-    print(f"✅ {MY_NAME} ONLINE")
+    print(f"✅ ONLINE: {MY_NAME}")
 
 
 @bot.event
 async def on_message(message: discord.Message):
-
-    if message.author.bot:
-        return
 
     content = message.content
 
@@ -277,6 +297,7 @@ async def on_message(message: discord.Message):
     if content.startswith("TOTAL_REQUEST|"):
 
         try:
+
             _, session_id, prefix = content.split("|")
 
             if prefix != PREFIX:
@@ -304,6 +325,7 @@ async def on_message(message: discord.Message):
     elif content.startswith("TOTAL_RESPONSE|"):
 
         try:
+
             _, session_id, machine, cookie, switched = content.split("|")
 
             if session_id not in REPORT_SESSIONS:
@@ -322,22 +344,22 @@ async def on_message(message: discord.Message):
 
 
 # ==================================================
-# TOTAL SINGLE
+# TOTAL
 # ==================================================
 
 @bot.tree.command(
     name="total",
-    description="Check máy hiện tại"
+    description="Check máy"
 )
 async def total(
     interaction: discord.Interaction,
-    id_may: str
+    machine: str
 ):
 
-    if id_may != MY_NAME:
+    if machine != MY_NAME:
         return
 
-    c, s = count_accounts()
+    cookie_count, switched_count = count_accounts()
 
     embed = discord.Embed(
         title=f"🖥️ {MY_NAME}",
@@ -346,13 +368,13 @@ async def total(
 
     embed.add_field(
         name="🍪 Cookie",
-        value=f"`{c}`",
+        value=f"`{cookie_count}`",
         inline=True
     )
 
     embed.add_field(
         name="🔁 Switched",
-        value=f"`{s}`",
+        value=f"`{switched_count}`",
         inline=True
     )
 
@@ -360,12 +382,12 @@ async def total(
 
 
 # ==================================================
-# TOTAL ALL V2
+# TOTAL ALL FIXED
 # ==================================================
 
 @bot.tree.command(
     name="total_all",
-    description="Tổng acc toàn dàn"
+    description="Total acc all"
 )
 async def total_all(
     interaction: discord.Interaction,
@@ -381,8 +403,10 @@ async def total_all(
 
     REPORT_SESSIONS[session_id] = {}
 
+    # add current machine
     REPORT_SESSIONS[session_id][MY_NAME] = make_machine_data()
 
+    # broadcast
     await interaction.channel.send(
         f"TOTAL_REQUEST|{session_id}|{prefix}"
     )
@@ -402,36 +426,36 @@ async def total_all(
         total_switched += info["switched"]
 
         lines.append(
-            f"`{machine}` → "
+            f"`{machine}` | "
             f"Cookie `{info['cookie']}` | "
             f"Switched `{info['switched']}`"
         )
 
     embed = discord.Embed(
-        title=f"📊 TOTAL ALL [{prefix.upper()}]",
+        title=f"📊 TOTAL ALL [{prefix}]",
         color=0x2ecc71
     )
 
     embed.add_field(
-        name="🍪 Total Cookie",
+        name="🍪 TOTAL COOKIE",
         value=f"`{total_cookie}`",
         inline=True
     )
 
     embed.add_field(
-        name="🔁 Total Switched",
+        name="🔁 TOTAL SWITCHED",
         value=f"`{total_switched}`",
         inline=True
     )
 
     embed.add_field(
-        name="🖥️ Machines",
-        value="\n".join(lines[:25]) if lines else "Không có data",
+        name="🖥️ MACHINES",
+        value="\n".join(lines) if lines else "No data",
         inline=False
     )
 
     embed.set_footer(
-        text=f"{len(data)} machines responded"
+        text=f"{len(data)} machines"
     )
 
     await interaction.followup.send(embed=embed)
@@ -440,81 +464,81 @@ async def total_all(
 
 
 # ==================================================
-# PUT COOKIE ALL
+# PUT COOKIE ALL FIXED
 # ==================================================
 
 @bot.tree.command(
     name="put_cookie_all",
-    description="Chia cookie toàn dàn"
+    description="Chia cookie all machine"
 )
 async def put_cookie_all(
     interaction: discord.Interaction,
     prefix: str,
-    tong_so_may: int,
     file: discord.Attachment
 ):
 
     if prefix != PREFIX:
         return
 
-    await interaction.response.defer(ephemeral=True)
+    # mỗi máy tự xử lý riêng
+    # KHÔNG dùng tong_so_may nữa
 
     try:
 
-        content = (
-            await file.read()
-        ).decode("utf-8")
+        raw = await file.read()
+
+        content = raw.decode("utf-8")
 
         cookies = [
-            line.strip()
-            for line in content.splitlines()
-            if line.strip()
+            x.strip()
+            for x in content.splitlines()
+            if x.strip()
         ]
 
         total = len(cookies)
 
-        if total == 0:
-            return await interaction.followup.send(
-                "❌ File rỗng",
-                ephemeral=True
-            )
+        if total <= 0:
+            return
 
-        chunk_size = total // tong_so_may
-        remain = total % tong_so_may
+        # ==================================================
+        # MACHINE FILTER
+        # ==================================================
 
-        start = ((MACHINE_ID - 1) * chunk_size)
-        end = start + chunk_size
+        my_cookies = []
 
-        if MACHINE_ID == tong_so_may:
-            end += remain
+        for index, cookie in enumerate(cookies):
 
-        my_cookies = cookies[start:end]
+            machine_slot = (index % 100) + 1
+
+            if machine_slot == MACHINE_ID:
+                my_cookies.append(cookie)
+
+        if not my_cookies:
+            return
 
         write_text(
             COOKIE_FILE,
             "\n".join(my_cookies)
         )
 
-        await interaction.followup.send(
-            f"✅ Nhận `{len(my_cookies)}` acc",
-            ephemeral=True
+        await interaction.response.send_message(
+            f"✅ {MY_NAME} nhận `{len(my_cookies)}` acc"
         )
 
     except Exception as e:
 
-        await interaction.followup.send(
-            f"❌ {e}",
-            ephemeral=True
+        await interaction.response.send_message(
+            f"❌ {e}"
         )
 
 
 # ==================================================
-# GET (ONE MACHINE)
+# GET
 # ==================================================
 
 @bot.tree.command(
     name="get",
-    description="Lấy switched máy hiện tại"
+    description="Get switched machine"
 )
 async def get(interaction: discord.Interaction):
 
@@ -523,13 +547,15 @@ async def get(interaction: discord.Interaction):
     switched_file = get_switched_file()
 
     if not switched_file:
+
         return await interaction.followup.send(
-            "❌ Không có file switched"
+            "❌ Không có file"
         )
 
     total = count_lines(switched_file)
 
     if total <= 0:
+
         return await interaction.followup.send(
             "❌ File rỗng"
         )
@@ -550,7 +576,7 @@ async def get(interaction: discord.Interaction):
             print(e)
 
         await interaction.followup.send(
-            f"✅ Đã gửi `{total}` accounts"
+            f"✅ Sent `{total}` acc"
         )
 
 
@@ -560,7 +586,7 @@ async def get(interaction: discord.Interaction):
 
 @bot.tree.command(
     name="get_all",
-    description="Lấy switched toàn dàn"
+    description="Get switched all"
 )
 async def get_all(
     interaction: discord.Interaction,
@@ -582,7 +608,6 @@ async def get_all(
     if total <= 0:
         return
 
-    # anti spam
     delay = random.randint(1, 10)
 
     await asyncio.sleep(delay)
@@ -609,7 +634,7 @@ async def get_all(
 
 @bot.tree.command(
     name="put_script_all",
-    description="Nạp script toàn dàn"
+    description="Put script all"
 )
 async def put_script_all(
     interaction: discord.Interaction,
@@ -641,7 +666,7 @@ async def put_script_all(
             print(e)
 
     await interaction.response.send_message(
-        f"✅ Đã nạp script vào `{saved}` folder"
+        f"✅ Saved `{saved}` places"
     )
 
 
@@ -653,3 +678,4 @@ bot.run(
     TOKEN,
     reconnect=True
 )
+
