@@ -1,6 +1,14 @@
-import discord from discord.ext import commands
+import discord
+from discord.ext import commands
 
-import os import io import time import shutil import random import zipfile import asyncio import tempfile
+import os
+import io
+import time
+import shutil
+import random
+import zipfile
+import asyncio
+import tempfile
 
 from pathlib import Path
 
@@ -18,7 +26,7 @@ COOKIE_FILE = BASE_DIR / "cookie.txt"
 
 SWITCHED_DIR = BASE_DIR / "Shouko" / "switched"
 
-AUTOEXEC_DIRS = [ Path("/sdcard/AutoExec"), Path("/sdcard/AutoExecute"), ]
+AUTOEXEC_DIRS = [ Path("/sdcard/Codex/Autoexec"), Path("/sdcard/Delta/Autoexecute"), ]
 
 REPORT_DELAY = 5 MAX_LINES_PER_FILE = 5000 MAX_ZIP_SIZE_MB = 20
 
