@@ -374,6 +374,9 @@ async def on_message(
     message: discord.Message
 ):
 
+    if not message.author.bot:
+        return
+
     content = message.content
 
     # ==================================================
@@ -418,14 +421,14 @@ async def on_message(
 
         try:
 
-            _, prefix, machine_id = (
+            _, prefix, machine_name = (
                 content.split("|")
             )
 
             if prefix != PREFIX:
                 return
 
-            if int(machine_id) != MACHINE_ID:
+            if machine_name != MY_NAME:
                 return
 
             if not message.attachments:
@@ -437,20 +440,40 @@ async def on_message(
 
             temp_path = (
                 BASE_DIR /
-                f"temp_cookie_{MACHINE_ID}.txt"
+                f"temp_cookie_{MY_NAME}.txt"
             )
 
             await attachment.save(
                 temp_path
             )
 
-            cookie_data = temp_path.read_text(
+            content = temp_path.read_text(
                 encoding="utf-8",
                 errors="ignore"
             )
 
-            if not cookie_data.strip():
-                return
+            cookies = [
+                x.strip()
+                for x in content.splitlines()
+                if x.strip()
+            ]
+
+            all_cookie = set()
+
+            if COOKIE_FILE.exists():
+
+                old = COOKIE_FILE.read_text(
+                    encoding="utf-8",
+                    errors="ignore"
+                )
+
+                all_cookie.update([
+                    x.strip()
+                    for x in old.splitlines()
+                    if x.strip()
+                ])
+
+            all_cookie.update(cookies)
 
             COOKIE_FILE.parent.mkdir(
                 parents=True,
@@ -458,7 +481,9 @@ async def on_message(
             )
 
             COOKIE_FILE.write_text(
-                cookie_data,
+                "\n".join(
+                    sorted(all_cookie)
+                ) + "\n",
                 encoding="utf-8"
             )
 
@@ -780,17 +805,21 @@ async def total_all(
     )
 
 # ==================================================
-# PUT COOKIE LOCAL
+# PUT COOKIE SPECIFIC MACHINE
 # ==================================================
 
 @bot.tree.command(
     name="put_cookie",
-    description="Put cookie local machine"
+    description="Put cookie specific machine"
 )
 async def put_cookie(
     interaction: discord.Interaction,
+    machine: str,
     file: discord.Attachment
 ):
+
+    if machine != MY_NAME:
+        return
 
     await interaction.response.defer()
 
@@ -809,9 +838,7 @@ async def put_cookie(
             if line.strip()
         ]
 
-        total = len(cookies)
-
-        if total <= 0:
+        if not cookies:
 
             return await interaction.followup.send(
                 "❌ File rỗng"
@@ -822,13 +849,36 @@ async def put_cookie(
             exist_ok=True
         )
 
+        all_cookie = set()
+
+        if COOKIE_FILE.exists():
+
+            old = COOKIE_FILE.read_text(
+                encoding="utf-8",
+                errors="ignore"
+            )
+
+            all_cookie.update([
+                x.strip()
+                for x in old.splitlines()
+                if x.strip()
+            ])
+
+        all_cookie.update(cookies)
+
         COOKIE_FILE.write_text(
-            "\n".join(cookies),
+            "\n".join(
+                sorted(all_cookie)
+            ) + "\n",
             encoding="utf-8"
         )
 
         await interaction.followup.send(
-            f"✅ Saved `{total}` cookie"
+            (
+                f"✅ Added `{len(cookies)}` cookie"
+                f"\n🖥️ `{MY_NAME}`"
+                f"\n🍪 Total `{len(all_cookie)}`"
+            )
         )
 
     except Exception as e:
@@ -859,12 +909,6 @@ async def put_cookie_all(
 
     try:
 
-        if total_machines <= 0:
-
-            return await interaction.followup.send(
-                "❌ total_machines invalid"
-            )
-
         raw = await file.read()
 
         content = raw.decode(
@@ -878,9 +922,7 @@ async def put_cookie_all(
             if line.strip()
         ]
 
-        total_cookie = len(cookies)
-
-        if total_cookie <= 0:
+        if not cookies:
 
             return await interaction.followup.send(
                 "❌ File rỗng"
@@ -905,11 +947,19 @@ async def put_cookie_all(
                 machine_index
             ].append(cookie)
 
+        machine_names = [
+            f"{prefix}-{i}"
+            for i in range(
+                1,
+                total_machines + 1
+            )
+        ]
+
         sent = 0
 
-        for machine_id, machine_cookies in enumerate(
-            chunks,
-            start=1
+        for machine_name, machine_cookies in zip(
+            machine_names,
+            chunks
         ):
 
             if not machine_cookies:
@@ -917,11 +967,13 @@ async def put_cookie_all(
 
             temp_path = (
                 BASE_DIR /
-                f"temp_cookie_{machine_id}.txt"
+                f"temp_cookie_{machine_name}.txt"
             )
 
             temp_path.write_text(
-                "\n".join(machine_cookies),
+                "\n".join(
+                    machine_cookies
+                ) + "\n",
                 encoding="utf-8"
             )
 
@@ -929,11 +981,11 @@ async def put_cookie_all(
                 content=(
                     f"PUT_COOKIE|"
                     f"{prefix}|"
-                    f"{machine_id}"
+                    f"{machine_name}"
                 ),
                 file=discord.File(
                     temp_path,
-                    filename=f"cookie_{machine_id}.txt"
+                    filename=f"{machine_name}.txt"
                 )
             )
 
@@ -953,7 +1005,7 @@ async def put_cookie_all(
         await interaction.followup.send(
             (
                 f"✅ Split `{sent}` cookie"
-                f" -> `{total_machines}` machines"
+                f"\n🖥️ `{total_machines}` machines"
             )
         )
 
@@ -964,17 +1016,21 @@ async def put_cookie_all(
         )
 
 # ==================================================
-# PUT AUTOEXEC LOCAL
+# PUT AUTOEXEC SPECIFIC MACHINE
 # ==================================================
 
 @bot.tree.command(
     name="put_autoexec",
-    description="Put autoexec local machine"
+    description="Put autoexec specific machine"
 )
 async def put_autoexec(
     interaction: discord.Interaction,
+    machine: str,
     file: discord.Attachment
 ):
+
+    if machine != MY_NAME:
+        return
 
     await interaction.response.defer()
 
@@ -1006,7 +1062,8 @@ async def put_autoexec(
     await interaction.followup.send(
         (
             f"✅ Saved `{file.filename}`"
-            f" to `{saved}` places"
+            f"\n🖥️ `{MY_NAME}`"
+            f"\n📂 `{saved}` places"
         )
     )
 
@@ -1039,16 +1096,20 @@ async def put_script_all(
     )
 
 # ==================================================
-# GET
+# GET SPECIFIC MACHINE
 # ==================================================
 
 @bot.tree.command(
     name="get",
-    description="Get switched machine"
+    description="Get switched specific machine"
 )
 async def get(
-    interaction: discord.Interaction
+    interaction: discord.Interaction,
+    machine: str
 ):
+
+    if machine != MY_NAME:
+        return
 
     await interaction.response.defer()
 
@@ -1083,15 +1144,21 @@ async def get(
         )
 
         try:
+
             shutil.move(
                 switched_file,
                 backup
             )
+
         except Exception as e:
+
             print(e)
 
         await interaction.followup.send(
-            f"✅ Sent `{total}` acc"
+            (
+                f"✅ Sent `{total}` acc"
+                f"\n🖥️ `{MY_NAME}`"
+            )
         )
 
 # ==================================================
