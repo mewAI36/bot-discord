@@ -12,9 +12,9 @@ pip install -U discord.py requests aiohttp
 DOWNLOAD_DIR="/storage/emulated/0/Download"
 BOOT_DIR="$HOME/.termux/boot"
 
-BOT_FILE="$DOWNLOAD_DIR/bot.py"
 TOKEN_FILE="$DOWNLOAD_DIR/bot_token.txt"
 NAME_FILE="$DOWNLOAD_DIR/name.txt"
+
 RUN_FILE="$BOOT_DIR/run_bot.sh"
 
 mkdir -p "$DOWNLOAD_DIR"
@@ -33,22 +33,16 @@ read -p "Tên máy : " MACHINE_NAME
 echo "$BOT_TOKEN" > "$TOKEN_FILE"
 echo "$MACHINE_NAME" > "$NAME_FILE"
 
-echo ""
-echo "Đang tải bot.py..."
-echo ""
-
-curl -L \
-"https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py" \
--o "$BOT_FILE"
-
-chmod +x "$BOT_FILE"
-
 cat > "$RUN_FILE" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
 termux-wake-lock
 
 cd /storage/emulated/0/Download
+
+curl -Ls \
+https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py \
+-o bot.py
 
 python bot.py
 EOF
@@ -62,15 +56,12 @@ echo "     INSTALL THÀNH CÔNG"
 echo "=============================="
 echo ""
 
-echo "bot.py : $BOT_FILE"
 echo "Token : $TOKEN_FILE"
 echo "Tên máy : $NAME_FILE"
 echo "Auto boot : $RUN_FILE"
 
 echo ""
-echo "Đang chạy bot..."
+echo "Đang tải & chạy bot..."
 echo ""
 
-cd "$DOWNLOAD_DIR"
-
-python bot.py
+bash "$RUN_FILE"
