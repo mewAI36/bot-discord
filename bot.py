@@ -33,6 +33,7 @@ AUTOEXEC_DIRS = [
 
 REPORT_DELAY = 8
 MAX_LINES_PER_FILE = 5000
+RESULT_KEEP_LATEST = 1
 
 # --- CẤU HÌNH MỚI ĐƯỢC THÊM VÀO ---
 RESULT_DIR = (
@@ -181,10 +182,20 @@ def count_lines(path: Path):
         return 0
 
 
-def get_switched_file():
+def get_switched_files():
 
     if not SWITCHED_DIR.exists():
-        return None
+        return []
+
+    return sorted([
+        x
+        for x in SWITCHED_DIR.iterdir()
+        if (
+            x.is_file()
+            and
+            x.suffix == ".txt"
+        )
+    ])
 
     files = sorted([
         x
@@ -207,7 +218,7 @@ def count_accounts():
 
     switched_count = 0
 
-    switched_file = get_switched_file()
+    switched_file = get_switched_files()
 
     if switched_file:
 
@@ -751,7 +762,7 @@ async def on_message(
                 return
 
             switched_file = (
-                get_switched_file()
+                get_switched_files()
             )
 
             if not switched_file:
@@ -1289,7 +1300,7 @@ async def get(
 
     await interaction.response.defer()
 
-    switched_file = get_switched_file()
+    switched_file = get_switched_files()
 
     if not switched_file:
 
@@ -1396,4 +1407,5 @@ bot.run(
     TOKEN,
     reconnect=True
 )
+
 
