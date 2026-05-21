@@ -33,9 +33,10 @@ AUTOEXEC_DIRS = [
 
 REPORT_DELAY = 8
 MAX_LINES_PER_FILE = 5000
+
+# --- 1. THÊM CONFIG ---
 RESULT_KEEP_LATEST = 1
 
-# --- CẤU HÌNH MỚI ĐƯỢC THÊM VÀO ---
 RESULT_DIR = (
     BASE_DIR /
     "all_result"
@@ -182,6 +183,7 @@ def count_lines(path: Path):
         return 0
 
 
+# --- 2. REPLACE get_switched_file() -> get_switched_files() ---
 def get_switched_files():
 
     if not SWITCHED_DIR.exists():
@@ -197,19 +199,8 @@ def get_switched_files():
         )
     ])
 
-    files = sorted([
-        x
-        for x in SWITCHED_DIR.iterdir()
-        if (
-            x.is_file()
-            and
-            x.suffix == ".txt"
-        )
-    ])
 
-    return files[0] if files else None
-
-
+# --- 3. REPLACE count_accounts() ---
 def count_accounts():
 
     cookie_count = count_lines(
@@ -218,12 +209,12 @@ def count_accounts():
 
     switched_count = 0
 
-    switched_file = get_switched_files()
+    switched_files = get_switched_files()
 
-    if switched_file:
+    for file in switched_files:
 
-        switched_count = count_lines(
-            switched_file
+        switched_count += count_lines(
+            file
         )
 
     return (
@@ -382,8 +373,7 @@ async def send_large_file(
     return True
 
 
-# --- CÁC HÀM XỬ LÝ KẾT QUẢ ĐƯỢC THÊM VÀO ---
-
+# --- 6. REPLACE save_result_file() ---
 async def save_result_file(
     machine_name: str,
     attachment: discord.Attachment
@@ -399,6 +389,27 @@ async def save_result_file(
         exist_ok=True
     )
 
+    old_dirs = sorted(
+        [
+            x for x in machine_dir.iterdir()
+            if x.is_dir()
+        ],
+        key=lambda x: x.stat().st_mtime,
+        reverse=True
+    )
+
+    for old in old_dirs[
+        RESULT_KEEP_LATEST:
+    ]:
+
+        try:
+            shutil.rmtree(
+                old,
+                ignore_errors=True
+            )
+        except:
+            pass
+
     zip_path = (
         machine_dir /
         attachment.filename
@@ -410,12 +421,14 @@ async def save_result_file(
 
     try:
 
+        extract_name = (
+            f"{int(time.time())}_"
+            f"{attachment.filename.replace('.zip', '')}"
+        )
+
         extract_dir = (
             machine_dir /
-            attachment.filename.replace(
-                ".zip",
-                ""
-            )
+            extract_name
         )
 
         extract_dir.mkdir(
@@ -443,6 +456,7 @@ async def save_result_file(
         print(e)
 
 
+# --- 7. THÊM merge_all_accounts() ---
 def merge_all_accounts():
 
     RESULT_DIR.mkdir(
@@ -450,40 +464,76 @@ def merge_all_accounts():
         exist_ok=True
     )
 
-    all_acc = set()
+    merged_map = {}
 
-    for txt in RESULT_DIR.rglob("*.txt"):
+    for machine_dir in RESULT_DIR.iterdir():
 
-        if txt.name == MERGED_FILE.name:
+        if not machine_dir.is_dir():
             continue
 
-        try:
+        request_dirs = sorted(
+            [
+                x for x in machine_dir.iterdir()
+                if x.is_dir()
+            ],
+            key=lambda x: x.stat().st_mtime,
+            reverse=True
+        )
 
-            content = txt.read_text(
-                encoding="utf-8",
-                errors="ignore"
-            )
+        latest_dirs = request_dirs[
+            :RESULT_KEEP_LATEST
+        ]
 
-            for line in content.splitlines():
+        for request_dir in latest_dirs:
 
-                line = line.strip()
+            for txt in request_dir.rglob("*.txt"):
 
-                if line:
-                    all_acc.add(line)
+                try:
 
-        except:
-            pass
+                    file_key = txt.stem
 
-    MERGED_FILE.write_text(
-        "\n".join(
-            sorted(all_acc)
-        ) + "\n",
-        encoding="utf-8"
-    )
+                    if file_key not in merged_map:
+                        merged_map[file_key] = set()
 
-    return len(all_acc)
+                    content = txt.read_text(
+                        encoding="utf-8",
+                        errors="ignore"
+                    )
+
+                    for line in content.splitlines():
+
+                        line = line.strip()
+
+                        if line:
+                            merged_map[
+                                file_key
+                            ].add(line)
+
+                except:
+                    pass
+
+    total_all = 0
+
+    for file_key, accounts in merged_map.items():
+
+        out_file = (
+            RESULT_DIR /
+            f"all_{file_key}.txt"
+        )
+
+        out_file.write_text(
+            "\n".join(
+                sorted(accounts)
+            ) + "\n",
+            encoding="utf-8"
+        )
+
+        total_all += len(accounts)
+
+    return total_all
 
 
+# --- 8. REPLACE make_final_zip() ---
 def make_final_zip():
 
     if FINAL_ZIP.exists():
@@ -496,19 +546,14 @@ def make_final_zip():
         zipfile.ZIP_DEFLATED
     ) as zipf:
 
-        for file in RESULT_DIR.rglob("*"):
+        for file in RESULT_DIR.glob(
+            "all_*.txt"
+        ):
 
-            if file.is_file():
-
-                if file.name == FINAL_ZIP.name:
-                    continue
-
-                zipf.write(
-                    file,
-                    file.relative_to(
-                        RESULT_DIR
-                    )
-                )
+            zipf.write(
+                file,
+                file.name
+            )
 
     return FINAL_ZIP
 
@@ -537,7 +582,6 @@ async def on_message(
 
     content = message.content
 
-    # --- ĐOẠN CHECK AUTO DETECT FILE ĐƯỢC CHÈN VÀO ĐẦU ON_MESSAGE ---
     if (
         message.attachments
         and
@@ -745,7 +789,7 @@ async def on_message(
             print(e)
 
     # ==================================================
-    # GET ALL REQUEST
+    # GET ALL REQUEST (--- 4. REPLACE GET_ALL_REQUEST ---)
     # ==================================================
 
     elif content.startswith(
@@ -761,18 +805,9 @@ async def on_message(
             if prefix != PREFIX:
                 return
 
-            switched_file = (
-                get_switched_files()
-            )
+            switched_files = get_switched_files()
 
-            if not switched_file:
-                return
-
-            total = count_lines(
-                switched_file
-            )
-
-            if total <= 0:
+            if not switched_files:
                 return
 
             delay = random.randint(
@@ -782,29 +817,38 @@ async def on_message(
 
             await asyncio.sleep(delay)
 
-            success = await send_large_file(
-                message.channel,
-                switched_file,
-                MY_NAME
-            )
+            for switched_file in switched_files:
 
-            if success:
-
-                backup = (
-                    switched_file.with_suffix(
-                        ".sent"
-                    )
+                total = count_lines(
+                    switched_file
                 )
 
-                try:
+                if total <= 0:
+                    continue
 
-                    shutil.move(
-                        switched_file,
-                        backup
+                success = await send_large_file(
+                    message.channel,
+                    switched_file,
+                    MY_NAME
+                )
+
+                if success:
+
+                    backup = (
+                        switched_file.with_suffix(
+                            ".sent"
+                        )
                     )
 
-                except Exception as e:
-                    print(e)
+                    try:
+
+                        shutil.move(
+                            switched_file,
+                            backup
+                        )
+
+                    except Exception as e:
+                        print(e)
 
         except Exception as e:
             print(e)
@@ -1049,7 +1093,7 @@ async def put_cookie(
                 x.strip()
                 for x in old.splitlines()
                 if x.strip()
-            ])
+                ])
 
         all_cookie.update(cookies)
 
@@ -1283,7 +1327,7 @@ async def put_script_all(
     )
 
 # ==================================================
-# GET SPECIFIC MACHINE
+# GET SPECIFIC MACHINE (--- 5. REPLACE /get ---)
 # ==================================================
 
 @bot.tree.command(
@@ -1300,53 +1344,59 @@ async def get(
 
     await interaction.response.defer()
 
-    switched_file = get_switched_files()
+    switched_files = get_switched_files()
 
-    if not switched_file:
+    if not switched_files:
 
         return await interaction.followup.send(
             "❌ Không có file"
         )
 
-    total = count_lines(
-        switched_file
-    )
+    total_all = 0
+    sent_files = 0
 
-    if total <= 0:
+    for switched_file in switched_files:
 
-        return await interaction.followup.send(
-            "❌ File rỗng"
+        total = count_lines(
+            switched_file
         )
 
-    success = await send_large_file(
-        interaction.channel,
-        switched_file,
-        MY_NAME
-    )
+        if total <= 0:
+            continue
 
-    if success:
-
-        backup = switched_file.with_suffix(
-            ".sent"
+        success = await send_large_file(
+            interaction.channel,
+            switched_file,
+            MY_NAME
         )
 
-        try:
+        if success:
 
-            shutil.move(
-                switched_file,
-                backup
+            total_all += total
+            sent_files += 1
+
+            backup = switched_file.with_suffix(
+                ".sent"
             )
 
-        except Exception as e:
+            try:
 
-            print(e)
+                shutil.move(
+                    switched_file,
+                    backup
+                )
 
-        await interaction.followup.send(
-            (
-                f"✅ Sent `{total}` acc"
-                f"\n🖥️ `{MY_NAME}`"
-            )
+            except Exception as e:
+
+                print(e)
+
+    await interaction.followup.send(
+        (
+            f"✅ Sent `{total_all}` acc"
+            f"\n📂 Files `{sent_files}`"
+            f"\n🖥️ `{MY_NAME}`"
         )
+    )
 
 # ==================================================
 # GET ALL
@@ -1374,7 +1424,10 @@ async def get_all(
         "📦 Requested all machines"
     )
 
-# --- LỆNH EXPORT FINAL ĐƯỢC CHÈN VÀO ĐÂY ---
+# ==================================================
+# EXPORT ALL (--- 9. REPLACE /export_all ---)
+# ==================================================
+
 @bot.tree.command(
     name="export_all",
     description="Export all result"
@@ -1389,9 +1442,14 @@ async def export_all(
 
     zip_path = make_final_zip()
 
+    files = list(
+        RESULT_DIR.glob("all_*.txt")
+    )
+
     await interaction.followup.send(
         content=(
-            f"✅ Total merged `{total}` acc"
+            f"✅ Exported `{len(files)}` files"
+            f"\n📦 Total merged `{total}` acc"
         ),
         file=discord.File(
             zip_path,
@@ -1407,5 +1465,4 @@ bot.run(
     TOKEN,
     reconnect=True
 )
-
 
