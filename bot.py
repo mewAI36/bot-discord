@@ -1409,7 +1409,7 @@ async def get(
 async def get_all(
     interaction: discord.Interaction,
     prefix: str,
-    wait_time: int = 45 # Thời gian chờ các máy up file (tính bằng giây)
+    wait_time: int = 90 # Thời gian chờ các máy up file (tính bằng giây)
 ):
 
     if prefix != PREFIX:
