@@ -805,15 +805,14 @@ async def on_message(
             if prefix != PREFIX:
                 return
 
-            switched_files = get_switched_files()
+                        switched_files = get_switched_files()
 
             if not switched_files:
                 return
 
-            delay = random.randint(
-                1,
-                10
-            )
+            # Xếp hàng lần lượt dựa theo ID máy để tránh spam Discord Rate Limit
+            delay = MACHINE_ID * 4 
+            delay += random.randint(1, 3) 
 
             await asyncio.sleep(delay)
 
