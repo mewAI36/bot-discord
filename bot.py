@@ -1399,16 +1399,17 @@ async def get(
     )
 
 # ==================================================
-# GET ALL
+# GET ALL & AUTO EXPORT
 # ==================================================
 
 @bot.tree.command(
     name="get_all",
-    description="Get switched all"
+    description="Get switched all & auto export"
 )
 async def get_all(
     interaction: discord.Interaction,
-    prefix: str
+    prefix: str,
+    wait_time: int = 45 # Thời gian chờ các máy up file (tính bằng giây)
 ):
 
     if prefix != PREFIX:
@@ -1416,28 +1417,21 @@ async def get_all(
 
     await interaction.response.defer()
 
+    # 1. Phát tín hiệu cho các máy tiến hành upload file
     await interaction.channel.send(
         f"GET_ALL_REQUEST|{prefix}"
     )
 
     await interaction.followup.send(
-        "📦 Requested all machines"
+        f"📦 Đã yêu cầu tất cả các máy gửi file. Bot sẽ tự động gộp và xuất file tổng sau `{wait_time}` giây..."
     )
 
-# ==================================================
-# EXPORT ALL (--- 9. REPLACE /export_all ---)
-# ==================================================
+    # 2. Đợi các máy upload file và đợi sự kiện on_message xử lý tải file về RESULT_DIR
+    await asyncio.sleep(
+        wait_time
+    )
 
-@bot.tree.command(
-    name="export_all",
-    description="Export all result"
-)
-async def export_all(
-    interaction: discord.Interaction
-):
-
-    await interaction.response.defer()
-
+    # 3. Chạy lệnh gộp tất cả file
     total = merge_all_accounts()
 
     zip_path = make_final_zip()
@@ -1446,16 +1440,25 @@ async def export_all(
         RESULT_DIR.glob("all_*.txt")
     )
 
-    await interaction.followup.send(
+    if not files or total == 0:
+        
+        await interaction.channel.send(
+            "❌ Không có dữ liệu nào được trả về hoặc gộp thành công sau thời gian chờ."
+        )
+        return
+
+    # 4. Trả kết quả file tổng chứa tất cả account của mọi máy (đã phân tên)
+    await interaction.channel.send(
         content=(
-            f"✅ Exported `{len(files)}` files"
-            f"\n📦 Total merged `{total}` acc"
+            f"✅ Hoàn tất Export `{len(files)}` files"
+            f"\n📦 Tổng cộng gộp được `{total}` acc"
         ),
         file=discord.File(
             zip_path,
             filename="all_result.zip"
         )
     )
+
 
 # ==================================================
 # RUN
