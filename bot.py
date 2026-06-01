@@ -805,7 +805,7 @@ async def on_message(
             if prefix != PREFIX:
                 return
 
-                        switched_files = get_switched_files()
+            switched_files = get_switched_files()
 
             if not switched_files:
                 return
