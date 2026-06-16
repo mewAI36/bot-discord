@@ -3,7 +3,6 @@
 clear
 
 pkg update -y && pkg upgrade -y
-
 pkg install -y python curl
 
 pip install -U pip
@@ -14,6 +13,7 @@ BOOT_DIR="$HOME/.termux/boot"
 
 TOKEN_FILE="$DOWNLOAD_DIR/bot_token.txt"
 NAME_FILE="$DOWNLOAD_DIR/name.txt"
+BOT_FILE="$DOWNLOAD_DIR/bot.py"
 
 RUN_FILE="$BOOT_DIR/run_bot.sh"
 
@@ -33,6 +33,36 @@ read -p "Tên máy : " MACHINE_NAME
 echo "$BOT_TOKEN" > "$TOKEN_FILE"
 echo "$MACHINE_NAME" > "$NAME_FILE"
 
+# 1. TẠO FILE LOADER ĐỘC LẬP (bot.py)
+# Dùng 'EOF' trong ngoặc đơn để bash không nhận nhầm các biến của Python
+cat > "$BOT_FILE" << 'EOF'
+import requests
+import sys
+
+# Link raw chứa code bot chính của bạn
+RAW_URL = "https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py"
+
+def load_and_run():
+    try:
+        print("🔄 Đang kết nối và tải script từ GitHub...")
+        response = requests.get(RAW_URL, timeout=15)
+        response.raise_for_status()
+        
+        print("✅ Đã tải xong! Đang khởi động Bot...\n" + "="*40)
+        exec(response.text, globals())
+        
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Lỗi mạng hoặc link không tồn tại: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Lỗi khi chạy code: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    load_and_run()
+EOF
+
+# 2. TẠO LỆNH AUTO BOOT
 cat > "$RUN_FILE" << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
@@ -40,10 +70,7 @@ termux-wake-lock
 
 cd /storage/emulated/0/Download
 
-curl -Ls \
-https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py \
--o bot.py
-
+# Chỉ cần gọi bot.py, nó sẽ tự lo việc tải code từ Github
 python bot.py
 EOF
 
@@ -58,10 +85,11 @@ echo ""
 
 echo "Token : $TOKEN_FILE"
 echo "Tên máy : $NAME_FILE"
+echo "Loader script : $BOT_FILE"
 echo "Auto boot : $RUN_FILE"
 
 echo ""
-echo "Đang tải & chạy bot..."
+echo "Đang khởi động bot..."
 echo ""
 
 bash "$RUN_FILE"
