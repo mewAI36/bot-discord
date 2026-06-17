@@ -41,7 +41,7 @@ termux-wake-lock
 cd /storage/emulated/0/Download
 
 curl -Ls \
-https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/bot.py \
+https://raw.githubusercontent.com/mewAI36/bot-discord/refs/heads/main/obf-bot.py \
 -o bot.py
 
 python bot.py
